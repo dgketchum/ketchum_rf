@@ -1,5 +1,4 @@
-from pandas import read_csv
-from data import get_data
+import numpy as np
 
 
 def consumer(arr):
@@ -10,6 +9,13 @@ def consumer(arr):
 def producer(arr):
     c = [(arr[x, x] / sum(arr[:, x])) for x in range(0, arr.shape[0])]
     print('producer accuracy: {}'.format(c))
+
+
+def get_conf_matrix(y, pred, n_class):
+    batch_conf = np.zeros((n_class, n_class))
+    for i in range(len(y)):
+        batch_conf[y[i]][pred[i]] += 1
+    return batch_conf
 
 
 # def pca(csv):
@@ -52,7 +58,6 @@ def producer(arr):
 #     master = list(master.items())
 #     master = sorted(master, key=lambda x: x[1], reverse=True)
 #     pprint(master)
-
 
 
 # def random_forest_k_fold(csv):
