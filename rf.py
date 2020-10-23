@@ -143,13 +143,15 @@ class RF_Classifier():
         predictions = [t.predict(x) for t in self.trees]
         (_, idx, counts) = np.unique(np.array(predictions), return_index=True, return_counts=True)
         index = idx[np.argmax(counts)]
-        mode = a[index]
-        return np.mode(predictions, axis=0)
+        mode = predictions[index]
+        return mode
 
 
 if __name__ == '__main__':
     _csv = 'irrmapper_training_sample.csv'
     x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6)
     rf = RF_Classifier(x_tr, y_tr, sample_size=100, n_trees=3, depth=3)
-    rf.predict(x_te)
+    for i in range(x_te.shape[0]):
+        x_, y_ = x_te[i, :], y_te[i]
+        print(rf.predict(x_), y_)
 # ========================= EOF ====================================================================
