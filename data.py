@@ -28,7 +28,7 @@ def get_data(csv, mode='binary', train_fraction=None, seed=None):
         idx = list(np.random.permutation(range(x.shape[0])))
         train_chunk = int(np.floor(len(idx) * train_fraction))
         x_train_idx, x_test_idx = idx[:train_chunk], idx[train_chunk:]
-        x_train, x_test = df.iloc[x_train_idx], df.iloc[x_test_idx]
+        x_train, x_test = df.iloc[x_train_idx].values, df.iloc[x_test_idx].values
         y_train, y_test = y[x_train_idx], y[x_test_idx]
         return x_train, x_test, y_train, y_test
 

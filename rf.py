@@ -17,11 +17,18 @@ class RF_Classifier(object):
     def create_tree(self):
         idxs = np.random.permutation(len(self.y))[:self.sample_sz]
         f_idxs = np.random.permutation(self.x.shape[1])[:self.n_features]
-        return DecisionTree(self.x.iloc[idxs], self.y[idxs], self.n_features, f_idxs,
-                            idxs=np.array(range(self.sample_sz)), depth=self.depth, min_leaf=self.min_leaf)
+
+        return DecisionTree(self.x[idxs],
+                            self.y[idxs],
+                            self.n_features,
+                            f_idxs,
+                            idxs=np.array(range(self.sample_sz)),
+                            depth=self.depth,
+                            min_leaf=self.min_leaf)
 
     def predict(self, x):
-        return np.mode([t.predict(x) for t in self.trees], axis=0)
+        predictions = [t.predict(x) for t in self.trees]
+        return np.mode(predictions, axis=0)
 
 
 class Node(object):
@@ -42,7 +49,7 @@ class Node(object):
         if self.depth < max_depth and x.shape[0] > self.min_samples_split:
 
             self.f_idx, self._split_value, group_1, group_2 = \
-                self._find_best_feature(x, y)
+                self._get_split(x, y)
 
             if self.f_idx is not np.NaN:
                 self.left_child = Node(self.depth + 1)
@@ -50,20 +57,20 @@ class Node(object):
                 self.left_child.recursive_nodes(*group_1)
                 self.right_child.recursive_nodes(*group_2)
             else:
-                self._leaf = True
+                self.leaf = True
                 _classes, counts = np.unique(y, return_counts=True)
-                self._label = _classes[np.argmax(counts)]
+                self.label = _classes[np.argmax(counts)]
         else:
-            self._leaf = True
+            self.leaf = True
             _classes, counts = np.unique(y, return_counts=True)
-            self._label = _classes[np.argmax(counts)]
+            self.label = _classes[np.argmax(counts)]
 
-    def _find_best_feature(self, x, y):
+    def _get_split(self, x, y):
         gini_scores = []
         split_values = []
         splits = []
         for feature_idx in self.feat_idxs:
-            g, s_value, s = self._split_feature(x, y, feature_idx)
+            g, s_value, s = self._split(x, y, feature_idx)
             gini_scores.append(g)
             split_values.append(s_value)
             splits.append(s)
@@ -72,7 +79,7 @@ class Node(object):
         group_1, group_2 = splits[arg_min]
         return self.feat_idxs[arg_min], split_values[arg_min], group_1, group_2
 
-    def _split_feature(self, x, y, feature_idx):
+    def _split(self, x, y, feature_idx):
 
         gini = []
         splits = []
@@ -96,6 +103,9 @@ class Node(object):
                 gini.append(self._gini_impurity(*s))
                 splits.append((group_1, group_2))
                 split_values.append(split_value)
+
+        if len(gini) == 0:
+            return np.nan, np.nan, None
 
         arg_min = np.argmin(gini)
         return gini[arg_min], split_values[arg_min], splits[arg_min]
@@ -121,10 +131,7 @@ class DecisionTree(object):
         self.n_features = n_features
         self.n, self.c = len(idxs), x.shape[1]
         self.root = Node(depth=0)
-
-    def train_nodes(self):
-        for i in self.f_idxs:
-            self.find_better_split(i)
+        self.root.recursive_nodes(self.x, self.y, max_depth=8)
 
     @property
     def split_name(self):
@@ -151,8 +158,6 @@ class DecisionTree(object):
 if __name__ == '__main__':
     _csv = 'irrmapper_training_data.csv'
     x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6)
-    # sandbox some data
-    _x, _y = x_tr.values[:100, :12], y_tr[:100]
-    nodes = Node(depth=0).recursive_nodes(_x, _y)
-
+    rf = RF_Classifier(x_tr, y_tr, sample_size=100, n_trees=3, depth=3)
+    rf.predict(x_te)
 # ========================= EOF ====================================================================
