@@ -25,38 +25,58 @@ class RF_Classifier(object):
 
 
 class Node(object):
-    def __init__(self, depth=0):
+    def __init__(self, depth=0, min_samples_leaf=2, min_samples_split=4):
         self.depth = depth
         self.f_idx = None
         self.value = None
         self.leaf = False
         self.right_child, self.left_child = None, None
+        self.min_samples_leaf = min_samples_leaf
+        self.min_samples_split = min_samples_split
 
-    def recursive_nodes(self, x, y, feature_search=None,
-                        max_depth=8, min_samples_split=2, min_samples_leaf=1):
 
-        if self._depth < max_depth and x.shape[0] > min_samples_split:
+    def recursive_nodes(self, x, y, max_depth=8):
 
-            self._feature_idx, self._split_value, group_1, group_2 = \
-                split_search(x, y, min_samples_leaf, feature_search)
+        self.feat_idxs = np.array(list(range(0, x.shape[1])))
 
-            if self._feature_idx is not np.NaN:
-                self.left_child = Node(self._depth + 1)
-                self.right_child = Node(self._depth + 1)
-                self.left_child._get_node_split(*group_1, feature_search, max_depth,
-                                                min_samples_split,
-                                                min_samples_leaf)
-                self.right_child._get_node_split(*group_2, feature_search, max_depth,
-                                                 min_samples_split,
-                                                 min_samples_leaf)
+        if self.depth < max_depth and x.shape[0] > self.min_samples_split:
+
+            self.f_idx, self._split_value, group_1, group_2 = \
+                self._find_best_feature(x, y)
+
+            if self.f_idx is not np.NaN:
+                self.left_child = Node(self.depth + 1)
+                self.right_child = Node(self.depth + 1)
+                self.left_child.recursive_nodes(*group_1)
+                self.right_child.recursive_nodes(*group_2)
             else:
-                self._sprout(y)
+                self._leaf = True
+                _classes, counts = np.unique(y, return_counts=True)
+                self._label = _classes[np.argmax(counts)]
         else:
-            self._sprout(y)
+            self._leaf = True
+            _classes, counts = np.unique(y, return_counts=True)
+            self._label = _classes[np.argmax(counts)]
 
-    def _get_node_split(self, x, y, feature_search=True):
+    def _find_best_feature(self, x, y):
+        gini_scores = []
+        split_values = []
+        splits = []
+        for feature_idx in self.feat_idxs:
+            g, s_value, s = self._split_feature(x, y, feature_idx)
+            gini_scores.append(g)
+            split_values.append(s_value)
+            splits.append(s)
+
+        arg_min = np.nanargmin(gini_scores)
+        group_1, group_2 = splits[arg_min]
+        return self.feat_idxs[arg_min], split_values[arg_min], group_1, group_2
+
+    def _split_feature(self, x, y, feature_idx):
+
         gini = []
         splits = []
+        split_values = []
         series = x[:, feature_idx]
 
         for split_value in series:
@@ -65,23 +85,22 @@ class Node(object):
             group_1 = (x[bool_mask], y[bool_mask])
             group_2 = (x[bool_mask == 0], y[bool_mask == 0])
 
-            for g in groups:
-                if g[0].shape[0] < min_samples_leaf:
-                    return False
-            return True
+            def needs_split(groups):
+                for g in groups:
+                    if g[0].shape[0] < self.min_samples_leaf:
+                        return False
+                return True
 
-            if legal_split((group_1, group_2), min_samples_leaf=min_samples_leaf):
-                gini_scores.append(gini(*s))
-                splits.append(s)
+            if needs_split((group_1, group_2)):
+                s = [group_1, group_2]
+                gini.append(self._gini_impurity(*s))
+                splits.append((group_1, group_2))
                 split_values.append(split_value)
 
-        if len(gini_scores) is 0:
-            return np.NaN, np.NaN, None
+        arg_min = np.argmin(gini)
+        return gini[arg_min], split_values[arg_min], splits[arg_min]
 
-        arg_min = np.argmin(gini_scores)
-        return gini_scores[arg_min], split_values[arg_min], splits[arg_min]
-
-    def _gini_impurity(self):
+    def _gini_impurity(self, *groups):
         m = np.sum([group[0].shape[0] for group in groups])
         gini = 0.0
         for group in groups:
@@ -132,6 +151,8 @@ class DecisionTree(object):
 if __name__ == '__main__':
     _csv = 'irrmapper_training_data.csv'
     x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6)
-    rf = RF_Classifier(x_tr, y_tr)
+    # sandbox some data
+    _x, _y = x_tr.values[:100, :12], y_tr[:100]
+    nodes = Node(depth=0).recursive_nodes(_x, _y)
 
 # ========================= EOF ====================================================================
