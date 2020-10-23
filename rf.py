@@ -3,35 +3,7 @@ import numpy as np
 from data import get_data
 
 
-class RF_Classifier(object):
-    def __init__(self, x, y, sample_size, n_trees, n_features='sqrt', depth=10, min_leaf=5):
-
-        if n_features == 'sqrt':
-            self.n_features = int(np.sqrt(x.shape[1]))
-        else:
-            self.n_features = n_features
-
-        self.x, self.y, self.sample_sz, self.depth, self.min_leaf = x, y, sample_size, depth, min_leaf
-        self.trees = [self.create_tree() for i in range(n_trees)]
-
-    def create_tree(self):
-        idxs = np.random.permutation(len(self.y))[:self.sample_sz]
-        f_idxs = np.random.permutation(self.x.shape[1])[:self.n_features]
-
-        return DecisionTree(self.x[idxs],
-                            self.y[idxs],
-                            self.n_features,
-                            f_idxs,
-                            idxs=np.array(range(self.sample_sz)),
-                            depth=self.depth,
-                            min_leaf=self.min_leaf)
-
-    def predict(self, x):
-        predictions = [t.predict(x) for t in self.trees]
-        return np.mode(predictions, axis=0)
-
-
-class Node(object):
+class Node():
     def __init__(self, depth=0, min_samples_leaf=2, min_samples_split=4):
         self.depth = depth
         self.f_idx = None
@@ -41,14 +13,13 @@ class Node(object):
         self.min_samples_leaf = min_samples_leaf
         self.min_samples_split = min_samples_split
 
-
     def recursive_nodes(self, x, y, max_depth=8):
 
         self.feat_idxs = np.array(list(range(0, x.shape[1])))
 
         if self.depth < max_depth and x.shape[0] > self.min_samples_split:
 
-            self.f_idx, self._split_value, group_1, group_2 = \
+            self.f_idx, self.split_value, group_1, group_2 = \
                 self._get_split(x, y)
 
             if self.f_idx is not np.NaN:
@@ -122,10 +93,18 @@ class Node(object):
             gini += (1 - np.sum(proportions ** 2)) * weight
         return gini
 
+    def predict(self, x):
+        if self.leaf:
+            return self.label
+        else:
+            if x[self.f_idx] < self.split_value:
+                return self.left_child.predict(x)
+            else:
+                return self.right_child.predict(x)
 
-class DecisionTree(object):
+
+class DecisionTree():
     def __init__(self, x, y, n_features, f_idxs, idxs, depth=10, min_leaf=5):
-
         self.x, self.y, self.idxs, self.min_leaf, self.f_idxs = x, y, idxs, min_leaf, f_idxs
         self.depth = depth
         self.n_features = n_features
@@ -133,30 +112,43 @@ class DecisionTree(object):
         self.root = Node(depth=0)
         self.root.recursive_nodes(self.x, self.y, max_depth=8)
 
-    @property
-    def split_name(self):
-        return self.x.columns[self.var_idx]
+    def predict(self, x):
+        return self.root.predict(x)
 
-    @property
-    def split_col(self):
-        return self.x.values[self.idxs, self.var_idx]
 
-    @property
-    def is_leaf(self):
-        return self.score == float('inf') or self.depth <= 0
+class RF_Classifier():
+    def __init__(self, x, y, sample_size, n_trees, n_features='sqrt', depth=10, min_leaf=5):
+
+        if n_features == 'sqrt':
+            self.n_features = int(np.sqrt(x.shape[1]))
+        else:
+            self.n_features = n_features
+
+        self.x, self.y, self.sample_sz, self.depth, self.min_leaf = x, y, sample_size, depth, min_leaf
+        self.trees = [self.create_tree() for i in range(n_trees)]
+
+    def create_tree(self):
+        idxs = np.random.permutation(len(self.y))[:self.sample_sz]
+        f_idxs = np.random.permutation(self.x.shape[1])[:self.n_features]
+
+        return DecisionTree(self.x[idxs],
+                            self.y[idxs],
+                            self.n_features,
+                            f_idxs,
+                            idxs=np.array(range(self.sample_sz)),
+                            depth=self.depth,
+                            min_leaf=self.min_leaf)
 
     def predict(self, x):
-        return np.array([self.predict_row(xi) for xi in x])
-
-    def predict_row(self, xi):
-        if self.is_leaf:
-            return self.val
-        t = self.lhs if xi[self.var_idx] <= self.split else self.rhs
-        return t.predict_row(xi)
+        predictions = [t.predict(x) for t in self.trees]
+        (_, idx, counts) = np.unique(np.array(predictions), return_index=True, return_counts=True)
+        index = idx[np.argmax(counts)]
+        mode = a[index]
+        return np.mode(predictions, axis=0)
 
 
 if __name__ == '__main__':
-    _csv = 'irrmapper_training_data.csv'
+    _csv = 'irrmapper_training_sample.csv'
     x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6)
     rf = RF_Classifier(x_tr, y_tr, sample_size=100, n_trees=3, depth=3)
     rf.predict(x_te)
