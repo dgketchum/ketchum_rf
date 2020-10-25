@@ -149,9 +149,10 @@ class RF_Classifier():
 
 if __name__ == '__main__':
     _csv = 'irrmapper_training_sample.csv'
-    x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6)
+    x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6, mode='multiclass')
     rf = RF_Classifier(x_tr, y_tr, sample_size=100, n_trees=3, depth=3)
     for i in range(x_te.shape[0]):
         x_, y_ = x_te[i, :], y_te[i]
-        print(rf.predict(x_), y_)
+        if rf.predict(x_) != y_:
+            print(rf.predict(x_), y_)
 # ========================= EOF ====================================================================
