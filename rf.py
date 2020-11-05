@@ -34,7 +34,9 @@ class Node():
         are more than min_samples_split samples in the node. If these tests pass, the node splits the samples into
         groups 1 and 2, groups 1 and 2 undergo feature and feature split value search (again using Gini), and are split
         again. This goes on, recursively, until the depth or the min_samples_split tests fail, when the node is
-        marked as a leaf and assigned the label of the majority of samples within it.
+        marked as a leaf and assigned the label of the majority of samples within it. This implemenation is 'greedy',
+        meaning that it checks every possible split (where each side has more than min_samples_leaf) for every
+        feature.
 
         In prediction, the nodes are traveresed again, starting from the parent node, until the sample reaches a
         leaf, which has has a label, and the prediction is made that the sample is indeed that label.
@@ -67,6 +69,7 @@ class Node():
         self.min_samples_split = min_samples_split
 
     def recursive_nodes(self, x, y, max_depth=8):
+        """Build new nodes, split, and create child nodes recursively."""
         self.feat_idxs = np.array(list(range(0, x.shape[1])))
 
         if self.depth < max_depth and x.shape[0] > self.min_samples_split:
@@ -88,6 +91,7 @@ class Node():
             self.label = _classes[np.argmax(counts)]
 
     def _get_split(self, x, y):
+        """Iterate over each feature and each possible split to find a good split for the data"""
         gini_scores = []
         split_values = []
         splits = []
@@ -102,7 +106,7 @@ class Node():
         return self.feat_idxs[arg_min], split_values[arg_min], group_1, group_2
 
     def _split(self, x, y, feature_idx):
-
+        """Look over each possible split of the feature, find lowest Gini score"""
         gini = []
         splits = []
         split_values = []
@@ -133,6 +137,12 @@ class Node():
         return gini[arg_min], split_values[arg_min], splits[arg_min]
 
     def _gini_impurity(self, *groups):
+        """ Gini Impurity Score
+        Gini Impurity calculates the 'mixing' of classes given a split. A good split will perfectly split classes
+        and the Gini score will be zero. For a binary problem, a poorly split class will have near equal number
+        of each class in each group, and approach 0.5. A perfect split gives Gini score = 0.
+
+        """
         m = np.sum([group[0].shape[0] for group in groups])
         gini = 0.0
         for group in groups:
@@ -262,8 +272,8 @@ def classify_moons():
     pass
 
 
-def classify_irrmapper(mode='binary'):
-    _csv = 'irrmapper_training_data.csv'
+def classify_irrmapper(mode='multiclass'):
+    _csv = 'irrmapper_training_sample.csv'
     x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6, mode=mode)
     rf = RF_Classifier(x_tr, y_tr, n_trees=10, n_features='sqrt', max_depth=5)
     preds, labels = [rf.predict(x_te[i, :]) for i in range(x_te.shape[0])], [y_te[i] for i in range(x_te.shape[0])]
@@ -273,5 +283,5 @@ def classify_irrmapper(mode='binary'):
 
 
 if __name__ == '__main__':
-    classify_irrmapper()
+    classify_irrmapper('multiclass')
 # ========================= EOF ====================================================================
