@@ -1,7 +1,16 @@
 import os
 import numpy as np
 from data import get_data
+from sklearn.datasets import make_moons
 
+
+"""
+David Ketchum
+November 5, 2020
+Implementation of Random Forest, after Breiman, L., 2001. Random forests. Machine learning, 45(1), pp.5-32.
+
+This implementation uses three classes: RF_Classifier, DecisionTree, and Node.
+"""
 
 class Node():
     def __init__(self, depth=0, min_samples_leaf=2, min_samples_split=4):
@@ -104,11 +113,10 @@ class Node():
 
 
 class DecisionTree():
-    def __init__(self, x, y, n_features, f_idxs, idxs, depth=10, min_leaf=5):
-        self.x, self.y, self.idxs, self.min_leaf, self.f_idxs = x, y, idxs, min_leaf, f_idxs
-        self.depth = depth
+    def __init__(self, x, y, n_features, feature_idxs, idxs, min_leaf=5):
+        self.x, self.y, self.idxs, self.min_leaf, self.f_idxs = x, y, idxs, min_leaf, feature_idxs
         self.n_features = n_features
-        self.n, self.c = len(idxs), x.shape[1]
+        self.c = x.shape[1]
         self.root = Node(depth=0)
         self.root.recursive_nodes(self.x, self.y, max_depth=8)
 
@@ -117,27 +125,54 @@ class DecisionTree():
 
 
 class RF_Classifier():
-    def __init__(self, x, y, sample_size, n_trees, n_features='sqrt', depth=10, min_leaf=5):
+    """A Random Forest Classifier"""
+    def __init__(self, x, y, sample_size, n_trees, n_features='sqrt', min_leaf=5, max_depth=8):
+        """
+        Create Random Forest Classifier
 
+        Random Forests reduce variance by bootstrap aggregation (bagging), i.e., a sample data set (of sample_size)
+        is randomly selected from the data, with replacement, meaning there can be duplicate data samples. As the
+        bootstrapped sample approaches the number of total training samples, the bootstrap sample is expected to
+        have about 63% of the unique samples in the original data. 'Bagging' is bootstrap aggregating, i.e., generating
+        a collection of bootstrap datasets (size n_trees) and using each to train a DecisionTree, then using the
+        collection of DecisionTree instances as an ensemble. In classification a prediction is made by simply
+        predicting the label on each DecisionTree, and choosing the mode of all predictions.
+
+        Breiman found that to reduce generalization error (i.e., improve prediction on new data), withstand noise and
+        outliers, run in parallel, and provide internal estimates of error and feature importance, it was helpful to
+        randomly select a subset of features. It's since been found that a good option sub-selection of features
+        is the square root of total features, default here (i.e., n_features).
+
+
+        :param x: the data. ndarray of shape (data instances, data_features)
+        :param y: the labels. ndarray of shape (data instances,)
+        :param sample_size: number of samples to draw from data
+        :param n_trees: number of decision trees to construct
+        :param n_features: number of features to use in each tree
+        :param min_leaf: minimum number of samples in each of left and right branches to be considered a
+        leaf (terminal) node
+        :param max_depth: maximum tree depth
+
+        """
         if n_features == 'sqrt':
             self.n_features = int(np.sqrt(x.shape[1]))
         else:
             self.n_features = n_features
 
-        self.x, self.y, self.sample_sz, self.depth, self.min_leaf = x, y, sample_size, depth, min_leaf
+        self.x, self.y, self.sample_sz, = x, y, sample_size,
+        self.min_leaf, self.max_depth = min_leaf, max_depth
         self.trees = [self.create_tree() for i in range(n_trees)]
 
     def create_tree(self):
-        idxs = np.random.permutation(len(self.y))[:self.sample_sz]
+        """Bootstrap sample creation and DecisionTree construction"""
+        #  use np.random.choice with replacement to get data sample
+        idxs = np.arange(len(self.y))
+        sample_idxs = np.random.choice(idxs, self.sample_sz, replace=True)
+        # random selection of features
         f_idxs = np.random.permutation(self.x.shape[1])[:self.n_features]
 
-        return DecisionTree(self.x[idxs],
-                            self.y[idxs],
-                            self.n_features,
-                            f_idxs,
-                            idxs=np.array(range(self.sample_sz)),
-                            depth=self.depth,
-                            min_leaf=self.min_leaf)
+        return DecisionTree(self.x[idxs], self.y[idxs], n_features=self.n_features, feature_idxs=f_idxs,
+                            idxs=np.array(range(self.sample_sz)), min_leaf=self.min_leaf)
 
     def predict(self, x):
         predictions = [t.predict(x) for t in self.trees]
@@ -149,10 +184,11 @@ class RF_Classifier():
 
 if __name__ == '__main__':
     _csv = 'irrmapper_training_sample.csv'
-    x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6, mode='multiclass')
-    rf = RF_Classifier(x_tr, y_tr, sample_size=100, n_trees=3, depth=3)
+    # moons = make_moons(noise=0.3, random_state=0)
+    x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6, mode='binary')
+    rf = RF_Classifier(x_tr, y_tr, sample_size=100, n_trees=10, n_features='sqrt', max_depth=10)
     for i in range(x_te.shape[0]):
         x_, y_ = x_te[i, :], y_te[i]
-        if rf.predict(x_) != y_:
-            print(rf.predict(x_), y_)
+        print(rf.predict(x_), y_)
+        # if rf.predict(x_) != y_:
 # ========================= EOF ====================================================================
