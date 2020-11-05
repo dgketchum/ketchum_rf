@@ -3,6 +3,13 @@ import numpy as np
 from pandas import read_csv
 
 
+# classifier = ee.Classifier.randomForest(
+#     numberOfTrees=100,
+#     variablesPerSplit=0,
+#     minLeafPopulation=1,
+#     outOfBagMode=False).setOutputMode('CLASSIFICATION')
+
+
 def get_data(csv, mode='binary', train_fraction=None, seed=None):
 
     assert mode in ['binary', 'multiclass']
