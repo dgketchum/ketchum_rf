@@ -105,7 +105,7 @@ class Node():
         return self.feat_idxs[arg_min], split_values[arg_min], group_1, group_2
 
     def _split(self, x, y, feature_idx):
-        """Look over each possible split of the feature, find lowest Gini score"""
+        """Iterate over each possible split of the selected feature, find lowest Gini score"""
         gini = []
         splits = []
         split_values = []
@@ -140,7 +140,6 @@ class Node():
         Gini Impurity calculates the 'mixing' of classes given a split. A good split will perfectly split classes
         and the Gini score will be zero. For a binary problem, a poorly split class will have near equal number
         of each class in each group, and approach 0.5. A perfect split gives Gini score = 0.
-
         """
         m = np.sum([group[0].shape[0] for group in groups])
         gini = 0.0
