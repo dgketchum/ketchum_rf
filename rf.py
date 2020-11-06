@@ -17,49 +17,48 @@ The recursive nodes approach is credited to github.com/sachaMorin.
 
 
 class Node():
-    """Nodes, where features are split"""
+    """
+    The Node object represents the point at the base of two branches, where a vector of features must be split.
+
+    The DecisionTree starts with a parent Node at depth=0, and then grows the tree by spliting data into branches.
+    A 'split' means we're dividing the data in two, based on a specific value of a specific feature in the
+    data. The way to find what value of what feature on which to base the split is to test the purity of the split,
+    i.e., how mixed the resulting labels are on each side of the split. Here, we use the Gini impurity measure,
+    (explained in its method doc-string). See splitting examples below.
+
+    Before a split is made, Nodes checks to see if the depth of the tree has exceeded max_depth, and that there
+    are more than min_samples_split samples in the node. If these tests pass, the node splits the samples into
+    groups 1 and 2, groups 1 and 2 undergo feature and feature split value search (again using Gini), and are split
+    again. This goes on, recursively, until the depth or the min_samples_split tests fail, when the node is
+    marked as a leaf and assigned the label of the majority of samples within it. This implemenation is 'greedy',
+    meaning that it checks every possible split (where each side has more than min_samples_leaf) for every
+    feature.
+
+    In prediction, the nodes are traveresed again, starting from the parent node, until the sample reaches a
+    leaf, which has has a label, and the prediction is made that the sample is indeed that label.
+
+    Example of perfect split: classes [cars, motorcycles] has feature num_wheels. Using Gini, we find impurity of
+    zero when we use the feature num_wheels, and base the split on 'less than 4'. We put all samples with
+    num_wheels = 2 on one side of the split, and all samples with num_wheels >= 4 on the other side of the split.
+    When we test the impurity, we see that the population on one side is all motorcycles, and the population on
+    the other side is all cars. Since 'windshield', 'passengers', 'headlights' all have values that overlap
+    somewhat between cars and motorcycles, we find larger (worse) impurity values when we test their possible splits,
+    so we choose num_wheels < 4 and move on.
+
+    Example of bad split: classes [Rick, Roger] has feature height. Using Gini, we look through all the data we have
+    about our population of men named Rick and Roger. When we look at 'height', and pick some value (e.g. 175 cm),
+    we find that when we split all the men into two groups depending on whether they are greater than, or less than
+    or equal to this measure, the resulting populations on each side of the split are both mixed with Ricks and
+    Rogers. Because men's names aren't really correlated with height, this is a poor feature (and value) for a
+    split. This will give a value that approaches 0.5 in the binary case.
+
+    :param depth: depth of the current node
+    :param min_samples_leaf: minimum samples needed to be considered a leaf
+    :param min_samples_split: minimum samples needed to contiue building with a new split
+    """
 
     def __init__(self, depth=0, min_samples_leaf=2, min_samples_split=4):
-        """
 
-        The Node object represents the point at the base of two branches, where a vector of features must be split.
-
-        The DecisionTree starts with a parent Node at depth=0, and then grows the tree by spliting data into branches.
-        A 'split' means we're dividing the data in two, based on a specific value of a specific feature in the
-        data. The way to find what value of what feature on which to base the split is to test the purity of the split,
-        i.e., how mixed the resulting labels are on each side of the split. Here, we use the Gini impurity measure,
-        (explained in its method doc-string). See splitting examples below.
-
-        Before a split is made, Nodes checks to see if the depth of the tree has exceeded max_depth, and that there
-        are more than min_samples_split samples in the node. If these tests pass, the node splits the samples into
-        groups 1 and 2, groups 1 and 2 undergo feature and feature split value search (again using Gini), and are split
-        again. This goes on, recursively, until the depth or the min_samples_split tests fail, when the node is
-        marked as a leaf and assigned the label of the majority of samples within it. This implemenation is 'greedy',
-        meaning that it checks every possible split (where each side has more than min_samples_leaf) for every
-        feature.
-
-        In prediction, the nodes are traveresed again, starting from the parent node, until the sample reaches a
-        leaf, which has has a label, and the prediction is made that the sample is indeed that label.
-
-        Example of perfect split: classes [cars, motorcycles] has feature num_wheels. Using Gini, we find impurity of
-        zero when we use the feature num_wheels, and base the split on 'less than 4'. We put all samples with
-        num_wheels = 2 on one side of the split, and all samples with num_wheels >= 4 on the other side of the split.
-        When we test the impurity, we see that the population on one side is all motorcycles, and the population on
-        the other side is all cars. Since 'windshield', 'passengers', 'headlights' all have values that overlap
-        somewhat between cars and motorcycles, we find larger (worse) impurity values when we test their possible splits,
-        so we choose num_wheels < 4 and move on.
-
-        Example of bad split: classes [Rick, Roger] has feature height. Using Gini, we look through all the data we have
-        about our population of men named Rick and Roger. When we look at 'height', and pick some value (e.g. 175 cm),
-        we find that when we split all the men into two groups depending on whether they are greater than, or less than
-        or equal to this measure, the resulting populations on each side of the split are both mixed with Ricks and
-        Rogers. Because men's names aren't really correlated with height, this is a poor feature (and value) for a
-        split. This will give a value that approaches 0.5 in the binary case.
-
-        :param depth: depth of the current node
-        :param min_samples_leaf: minimum samples needed to be considered a leaf
-        :param min_samples_split: minimum samples needed to contiue building with a new split
-        """
         self.depth = depth
         self.f_idx = None
         self.value = None
@@ -165,9 +164,20 @@ class Node():
 
 
 class DecisionTree():
-    """A Decision Tree Classifier"""
+    """
+    The Decision Tree constructor.
+
+    Here we construct the decision tree. This a stucture that consists of a recursive structure of nodes,
+    each of which, once trained, holds a feature and the split in the feature, as explained in Node docs.
+    :param x:
+    :param y:
+    :param n_features:
+    :param feature_idxs:
+    :param min_leaf:
+    """
 
     def __init__(self, x, y, n_features, feature_idxs, min_leaf=5):
+
         self.x, self.y, self.min_leaf, self.f_idxs = x, y, min_leaf, feature_idxs
         self.n_features = n_features
         self.c = x.shape[1]
@@ -208,10 +218,7 @@ class RF_Classifier():
         sample for use in the construction of a given DecisionTree. After construction, we'd predict each data sample
         to the population of trees that were trained without that sample. It's expected that as the data set size
         and number of trees increase, the OOB error estimate will converge with that of a held-out test data set.
-
         See https://www.stat.berkeley.edu/~breiman/OOBestimation.pdf
-
-        OOB requires that we track the use of each sample in our set of decision trees.
 
         :param x: the data. ndarray of shape (data instances, data_features)
         :param y: the labels. ndarray of shape (data instances,)
@@ -257,6 +264,7 @@ class RF_Classifier():
 
 
 def get_metrics(y, pred, n_class=2):
+    """Construct a confusion matrix"""
     batch_conf = np.zeros((n_class, n_class))
     for i in range(len(y)):
         batch_conf[y[i]][pred[i]] += 1
@@ -264,6 +272,7 @@ def get_metrics(y, pred, n_class=2):
 
 
 def classify_moons():
+    """Classify overlapping moons"""
     x_tr, y_tr = make_moons(n_samples=1000, noise=0.3)
     x_te, y_te = make_moons(n_samples=1000, noise=0.3)
     rf = RF_Classifier(x_tr, y_tr, n_trees=4, n_features='sqrt', max_depth=3)
@@ -273,15 +282,16 @@ def classify_moons():
 
 
 def classify_irrmapper(mode='multiclass'):
-    _csv = 'irrmapper_training_sample.csv'
-    x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6, mode=mode)
-    rf = RF_Classifier(x_tr, y_tr, n_trees=10, n_features='sqrt', max_depth=5)
+    """Classify irrigation with the IrrMapper data set"""
+    _csv = 'irrmapper_training_data.csv'
+    x_tr, x_te, y_tr, y_te = get_data(_csv, train_fraction=0.6, mode=mode, head=1000)
+    rf = RF_Classifier(x_tr, y_tr, n_trees=10, n_features='sqrt', max_depth=10)
     preds, labels = [rf.predict(x_te[i, :]) for i in range(x_te.shape[0])], [y_te[i] for i in range(x_te.shape[0])]
-    n_classes = np.unique(np.array(y))
-    conf = get_metrics(labels, preds)
+    n_classes = np.unique(np.array(labels)).shape[0]
+    conf = get_metrics(labels, preds, n_class=n_classes)
     print(conf)
 
 
 if __name__ == '__main__':
-    classify_irrmapper('multiclass')
+    classify_irrmapper('binary')
 # ========================= EOF ====================================================================
